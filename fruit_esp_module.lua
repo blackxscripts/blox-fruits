@@ -1,8 +1,8 @@
---// BLACK X - Fruit ESP Module V1 (Standalone)
+--// BLACK X - Fruit API Module (Final)
 
-local FruitESP = {}
+local FruitAPI = {}
 
---// CONFIG (IMAGENS RAW)
+--// DATABASE (IMAGENS RAW)
 local Fruits = {
     ["Rocket"] = "https://raw.githubusercontent.com/blackxscripts/blox-fruits/main/Rocket_Fruit.png",
     ["Spin"] = "https://raw.githubusercontent.com/blackxscripts/blox-fruits/main/Spin_Fruit.png",
@@ -45,19 +45,45 @@ local Fruits = {
     ["Dragon"] = "https://raw.githubusercontent.com/blackxscripts/blox-fruits/main/Dragon_Fruit.png"
 }
 
---// CRIAR ESP COM IMAGEM
-function FruitESP.Create(object, fruitName)
+--// EXPOR DATABASE
+FruitAPI.Fruits = Fruits
+
+--// CHECK
+function FruitAPI.IsFruit(name)
+    return Fruits[name] ~= nil
+end
+
+--// PEGAR IMAGEM
+function FruitAPI.GetImage(name)
+    return Fruits[name]
+end
+
+--// PEGAR FRUTAS DO PLAYER
+function FruitAPI.GetFruitsFromCharacter(char)
+    local list = {}
+
+    for _,v in pairs(char:GetChildren()) do
+        if v:IsA("Tool") and Fruits[v.Name] then
+            table.insert(list, v.Name)
+        end
+    end
+
+    return list
+end
+
+--// ESP DE CHÃO (IMAGEM)
+function FruitAPI.CreateWorldESP(part, fruitName)
     if not Fruits[fruitName] then return end
-    if not object or not object:IsA("BasePart") then return end
-    if object:FindFirstChild("BlackX_ESP") then return end
+    if not part or not part:IsA("BasePart") then return end
+    if part:FindFirstChild("BX_ESP") then return end
 
     local bill = Instance.new("BillboardGui")
-    bill.Name = "BlackX_ESP"
-    bill.Size = UDim2.new(0, 100, 0, 100)
+    bill.Name = "BX_ESP"
+    bill.Size = UDim2.new(0,100,0,100)
     bill.AlwaysOnTop = true
-    bill.StudsOffset = Vector3.new(0, 2.5, 0)
     bill.MaxDistance = 10000
-    bill.Parent = object
+    bill.StudsOffset = Vector3.new(0,2.5,0)
+    bill.Parent = part
 
     local img = Instance.new("ImageLabel")
     img.Size = UDim2.new(1,0,1,0)
@@ -66,37 +92,13 @@ function FruitESP.Create(object, fruitName)
     img.Parent = bill
 end
 
---// REMOVER ESP
-function FruitESP.Clear()
+--// LIMPAR ESP
+function FruitAPI.ClearESP()
     for _,v in pairs(workspace:GetDescendants()) do
-        if v:FindFirstChild("BlackX_ESP") then
-            v.BlackX_ESP:Destroy()
+        if v:FindFirstChild("BX_ESP") then
+            v.BX_ESP:Destroy()
         end
     end
 end
 
---// INICIAR AUTO ESP
-function FruitESP.Start()
-    -- pegar frutas já existentes
-    for _,v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Tool") and Fruits[v.Name] then
-            local handle = v:FindFirstChild("Handle")
-            if handle then
-                FruitESP.Create(handle, v.Name)
-            end
-        end
-    end
-
-    -- detectar novas frutas
-    workspace.DescendantAdded:Connect(function(v)
-        if v:IsA("Tool") and Fruits[v.Name] then
-            local handle = v:FindFirstChild("Handle")
-            if handle then
-                task.wait(0.2)
-                FruitESP.Create(handle, v.Name)
-            end
-        end
-    end)
-end
-
-return FruitESP
+return FruitAPI
