@@ -1,27 +1,26 @@
---// BLACK X - BACKPACK PLAYER ESP (REMENDADO V2)
+--// BLACK X - BACKPACK PLAYER ESP (V3 FINAL)
 
 local Players = game:GetService("Players")
 
--- MODULE
 local API = loadstring(game:HttpGet("https://raw.githubusercontent.com/blackxscripts/blox-fruits/main/fruit_esp_module.lua"))()
 
 -- PEGAR TODAS FRUTAS (CHAR + BACKPACK)
 local function GetFruits(player)
     local fruits = {}
 
-    -- Character (equipado)
+    -- Character
     if player.Character then
         for _,name in ipairs(API.GetFruitsFromCharacter(player.Character)) do
-            table.insert(fruits, name)
+            fruits[#fruits+1] = name
         end
     end
 
-    -- Backpack (inventário)
+    -- Backpack
     local backpack = player:FindFirstChildOfClass("Backpack")
     if backpack then
         for _,tool in ipairs(backpack:GetChildren()) do
             if tool:IsA("Tool") and API.IsFruit(tool.Name) then
-                table.insert(fruits, tool.Name)
+                fruits[#fruits+1] = tool.Name
             end
         end
     end
@@ -37,74 +36,81 @@ local function Update(player)
     local head = char:FindFirstChild("Head")
     if not head then return end
 
-    -- REMOVER ESP ANTIGO (anti bug)
+    -- REMOVE SEMPRE (anti bug duplicado)
     local old = head:FindFirstChild("BX_ESP")
     if old then old:Destroy() end
 
     local fruits = GetFruits(player)
     if #fruits == 0 then return end
 
-    local images = {}
-    for _,name in ipairs(fruits) do
+    local images = table.create(#fruits)
+
+    for i, name in ipairs(fruits) do
         local img = API.GetImage(name)
         if img then
-            table.insert(images, img)
+            images[i] = img
         end
     end
 
-    if #images == 0 then return end
-
-    API.CreateBillboard(
-        head,
-        images,
-        UDim2.new(0, 120, 0, 60),
-        Vector3.new(0, 3.5, 0)
-    )
+    API.CreateBillboard(head, images, UDim2.new(0,120,0,60), Vector3.new(0,3.5,0))
 end
 
--- HOOK DO PLAYER (EVENTOS)
+-- SISTEMA DE HOOK COMPLETO
 local function Hook(player)
-    local function SetupChar(char)
-        -- atualizar ao equipar/desequipar
-        char.ChildAdded:Connect(function()
-            Update(player)
+
+    local function HookChar(char)
+
+        -- eventos do personagem
+        char.ChildAdded:Connect(function(obj)
+            if obj:IsA("Tool") then
+                Update(player)
+            end
         end)
 
-        char.ChildRemoved:Connect(function()
-            Update(player)
+        char.ChildRemoved:Connect(function(obj)
+            if obj:IsA("Tool") then
+                Update(player)
+            end
         end)
 
-        -- update inicial
-        task.wait(0.5)
-        Update(player)
+        task.delay(0.5, function()
+            Update(player)
+        end)
     end
 
     -- Character
     if player.Character then
-        SetupChar(player.Character)
+        HookChar(player.Character)
     end
 
-    player.CharacterAdded:Connect(SetupChar)
+    player.CharacterAdded:Connect(HookChar)
 
-    -- Backpack (mais seguro)
+    -- Backpack seguro (sem bug)
     task.spawn(function()
-        while not player:FindFirstChildOfClass("Backpack") do
+        while player.Parent do
+            local backpack = player:FindFirstChildOfClass("Backpack")
+            if backpack then
+
+                backpack.ChildAdded:Connect(function(obj)
+                    if obj:IsA("Tool") then
+                        Update(player)
+                    end
+                end)
+
+                backpack.ChildRemoved:Connect(function(obj)
+                    if obj:IsA("Tool") then
+                        Update(player)
+                    end
+                end)
+
+                break
+            end
             task.wait()
         end
-
-        local backpack = player:FindFirstChildOfClass("Backpack")
-
-        backpack.ChildAdded:Connect(function()
-            Update(player)
-        end)
-
-        backpack.ChildRemoved:Connect(function()
-            Update(player)
-        end)
     end)
 end
 
--- INICIAR
+-- START
 for _,p in ipairs(Players:GetPlayers()) do
     if p ~= Players.LocalPlayer then
         Hook(p)
