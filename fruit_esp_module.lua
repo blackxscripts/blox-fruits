@@ -1,8 +1,10 @@
---// BLACK X - Fruit API Module (Final)
+--// BLACK X - Fruit API Module (PRO)
 
 local FruitAPI = {}
 
---// DATABASE (IMAGENS RAW)
+--// =========================
+-- DATABASE (SOURCE OF TRUTH)
+-- =========================
 local Fruits = {
     ["Rocket"] = "https://raw.githubusercontent.com/blackxscripts/blox-fruits/main/Rocket_Fruit.png",
     ["Spin"] = "https://raw.githubusercontent.com/blackxscripts/blox-fruits/main/Spin_Fruit.png",
@@ -45,24 +47,28 @@ local Fruits = {
     ["Dragon"] = "https://raw.githubusercontent.com/blackxscripts/blox-fruits/main/Dragon_Fruit.png"
 }
 
---// EXPOR DATABASE
 FruitAPI.Fruits = Fruits
 
---// CHECK
+--// =========================
+-- CORE API
+-- =========================
+
 function FruitAPI.IsFruit(name)
     return Fruits[name] ~= nil
 end
 
---// PEGAR IMAGEM
 function FruitAPI.GetImage(name)
     return Fruits[name]
 end
 
---// PEGAR FRUTAS DO PLAYER
+function FruitAPI.GetAll()
+    return Fruits
+end
+
 function FruitAPI.GetFruitsFromCharacter(char)
     local list = {}
 
-    for _,v in pairs(char:GetChildren()) do
+    for _,v in ipairs(char:GetChildren()) do
         if v:IsA("Tool") and Fruits[v.Name] then
             table.insert(list, v.Name)
         end
@@ -71,30 +77,83 @@ function FruitAPI.GetFruitsFromCharacter(char)
     return list
 end
 
---// ESP DE CHÃO (IMAGEM)
-function FruitAPI.CreateWorldESP(part, fruitName)
-    if not Fruits[fruitName] then return end
-    if not part or not part:IsA("BasePart") then return end
-    if part:FindFirstChild("BX_ESP") then return end
+--// =========================
+-- ESP (VISUAL LAYER)
+-- =========================
+
+function FruitAPI.CreateBillboard(parent, images, size, offset)
+    if not parent then return end
+
+    local old = parent:FindFirstChild("BX_ESP")
+    if old then old:Destroy() end
 
     local bill = Instance.new("BillboardGui")
     bill.Name = "BX_ESP"
-    bill.Size = UDim2.new(0,100,0,100)
+    bill.Size = size or UDim2.new(0,100,0,100)
     bill.AlwaysOnTop = true
     bill.MaxDistance = 10000
-    bill.StudsOffset = Vector3.new(0,2.5,0)
-    bill.Parent = part
+    bill.StudsOffset = offset or Vector3.new(0,3,0)
+    bill.Parent = parent
 
-    local img = Instance.new("ImageLabel")
-    img.Size = UDim2.new(1,0,1,0)
-    img.BackgroundTransparency = 1
-    img.Image = Fruits[fruitName]
-    img.Parent = bill
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1,0,1,0)
+    frame.BackgroundTransparency = 1
+    frame.Parent = bill
+
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Horizontal
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.Padding = UDim.new(0,3)
+    layout.Parent = frame
+
+    for _,imgUrl in ipairs(images) do
+        local img = Instance.new("ImageLabel")
+        img.Size = UDim2.new(0,40,0,40)
+        img.BackgroundTransparency = 1
+        img.Image = imgUrl
+        img.Parent = frame
+    end
+
+    return bill
 end
 
---// LIMPAR ESP
+function FruitAPI.CreateWorldESP(part, fruitName)
+    if not part or not part:IsA("BasePart") then return end
+    if not Fruits[fruitName] then return end
+
+    return FruitAPI.CreateBillboard(
+        part,
+        {Fruits[fruitName]},
+        UDim2.new(0,100,0,100),
+        Vector3.new(0,2.5,0)
+    )
+end
+
+function FruitAPI.CreatePlayerESP(character)
+    local head = character:FindFirstChild("Head")
+    if not head then return end
+
+    local fruits = FruitAPI.GetFruitsFromCharacter(character)
+    if #fruits == 0 then
+        local old = head:FindFirstChild("BX_ESP")
+        if old then old:Destroy() end
+        return
+    end
+
+    local images = {}
+    for _,name in ipairs(fruits) do
+        table.insert(images, Fruits[name])
+    end
+
+    return FruitAPI.CreateBillboard(head, images)
+end
+
+--// =========================
+-- UTIL
+-- =========================
+
 function FruitAPI.ClearESP()
-    for _,v in pairs(workspace:GetDescendants()) do
+    for _,v in ipairs(workspace:GetDescendants()) do
         if v:FindFirstChild("BX_ESP") then
             v.BX_ESP:Destroy()
         end
